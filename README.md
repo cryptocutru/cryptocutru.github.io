@@ -7,7 +7,7 @@ ru:
 
 English:
 Website: https://cryptocutru.github.io/
-Cryptocurrency prices
+Cryptocurrency prices.
 Everything is made by AI, I don't recommend using it to make money, this is my first project :>
 
 If the prices aren't updating, I recommend refreshing the page.
