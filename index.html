@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+  <title>Крипто Про | Live Price</title>
+  <meta name="description" content="Минималистичный крипто-монитор с живым графиком и новостями." />
+  <meta name="theme-color" content="#0f172a" />
+  <style>
+    :root {
+      --bg: #0b1220;
+      --surface: #131c31;
+      --border: #24304d;
+      --text: #f5f7fb;
+      --secondary: #94a3b8;
+      --accent: #3b82f6;
+      --green: #10b981;
+      --red: #ef4444;
+      --font: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    body.light {
+      --bg: #f4f7fb;
+      --surface: #ffffff;
+      --border: #dbe3ef;
+      --text: #0f172a;
+      --secondary: #64748b;
+      --accent: #2563eb;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      transition: background 0.2s, color 0.2s;
+      padding: 16px;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      max-width: 900px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    /* Карточки */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 20px;
+      margin-bottom: 16px;
+      transition: background 0.2s;
+    }
+    /* Заголовок */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .price-block h2 {
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .change-badge {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-left: 8px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(128,128,128,0.1);
+    }
+    .change-badge.up { color: var(--green); }
+    .change-badge.down { color: var(--red); }
+    /* Спарклайн */
+    .sparkline-container {
+      width: 100%;
+      height: 80px;
+      margin: 16px 0 8px;
+    }
+    canvas#sparkline {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    /* Информационная строка */
+    .info-row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      font-size: 0.9rem;
+      color: var(--secondary);
+    }
+    /* Панель инструментов */
+    .actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .icon-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 10px 16px;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: 0.2s;
+    }
+    .icon-btn:hover { background: var(--border); }
+    /* Новости */
+    .news-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 12px;
+    }
+    .news-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      text-decoration: none;
+      color: var(--text);
+      transition: 0.2s;
+      display: block;
+    }
+    .news-item:hover { border-color: var(--accent); }
+    .news-title {
+      font-weight: 600;
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+    .news-meta {
+      font-size: 0.8rem;
+      color: var(--secondary);
+    }
+    /* Модальное окно доната */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 24px;
+      max-width: 440px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal h3 { margin-bottom: 16px; }
+    .address-box {
+      background: var(--bg);
+      padding: 12px;
+      border-radius: 12px;
+      word-break: break-all;
+      font-family: monospace;
+      margin: 6px 0 10px;
+      border: 1px solid var(--border);
+    }
+    .close-btn {
+      float: right;
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 1.6rem;
+      cursor: pointer;
+    }
+    .gold-btn {
+      background: gold;
+      color: #000;
+      border: none;
+      font-weight: bold;
+    }
+    @media (max-width: 500px) {
+      .price-block h2 { font-size: 1.8rem; }
+      .icon-btn span { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Основная карточка цены и спарклайна -->
+    <div class="card">
+      <div class="header">
+        <div class="price-block">
+          <div style="display: flex; align-items: baseline; flex-wrap: wrap;">
+            <h2 id="price">—</h2>
+            <span class="change-badge" id="change">—</span>
+          </div>
+          <div style="font-size: 0.9rem; color: var(--secondary);" id="symbol-name">BTC/USDT</div>
+        </div>
+        <div class="actions">
+          <button class="icon-btn" id="theme-toggle"><span>🌓</span> Тема</button>
+          <button class="icon-btn gold-btn" id="donate-open"><span>💰</span> Донат</button>
+        </div>
+      </div>
+      <!-- Спарклайн вместо свечного графика -->
+      <div class="sparkline-container">
+        <canvas id="sparkline"></canvas>
+      </div>
+      <div class="info-row">
+        <span id="high-24h">Макс: —</span>
+        <span id="low-24h">Мин: —</span>
+        <span id="volume">Объём: —</span>
+      </div>
+      <!-- Кнопки выбора монет -->
+      <div style="display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap;" id="coin-selector"></div>
+    </div>
+
+    <!-- Новости -->
+    <div style="margin: 8px 0 4px; font-weight: 600;">📰 Крипто новости</div>
+    <div class="news-grid" id="news-list">Загрузка...</div>
+
+    <footer style="text-align: center; margin-top: 20px; color: var(--secondary); font-size: 0.8rem;">
+      © 2026 CryptoVision Lite
+    </footer>
+  </div>
+
+  <!-- Модальное окно доната (только донат) -->
+  <div class="modal-overlay" id="donate-modal">
+    <div class="modal">
+      <button class="close-btn" id="donate-close">&times;</button>
+      <h3>💰 Поддержать автора</h3>
+      <p><strong>USDT (TON):</strong></p>
+      <div class="address-box">UQCCmTsRm1aJb_0zqxEARMC_f8Iho1vOKcR7rPZn7_28jPfs</div>
+      <p style="font-size:0.8rem; color:var(--secondary);">Только Tether (USDT), иначе автор не получит.</p>
+      
+      <p style="margin-top:12px;"><strong>USDT (TRC20):</strong></p>
+      <div class="address-box">TKqHLdRGSbJfDq4ger8kEgA3u1YEfywF1v</div>
+      <p style="font-size:0.8rem; color:var(--secondary);">Только USDT TRC20, иначе автор не получит.</p>
+      
+      <p style="margin-top:12px;"><strong>TON:</strong></p>
+      <div class="address-box">UQCCmTsRm1aJb_0zqxEARMC_f8Iho1vOKcR7rPZn7_28jPfs</div>
+      <p style="font-size:0.8rem; color:var(--secondary);">Только токены TON.</p>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // --- Автоопределение языка ---
+      const userLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+      const currentLang = userLang.startsWith('ru') ? 'ru' : 'en';
+
+      // --- Состояние ---
+      const COINS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'BNB'];
+      let currentCoin = 'BTC';
+
+      // Локализация
+      const LANG = {
+        ru: { high: 'Макс', low: 'Мин', vol: 'Объём', theme: 'Тема', donate: 'Донат', news: '📰 Крипто новости', loading: 'Загрузка...' },
+        en: { high: 'High', low: 'Low', vol: 'Vol', theme: 'Theme', donate: 'Donate', news: '📰 Crypto News', loading: 'Loading...' }
+      };
+      
+      // --- DOM элементы ---
+      const $price = document.getElementById('price');
+      const $change = document.getElementById('change');
+      const $symbol = document.getElementById('symbol-name');
+      const $high = document.getElementById('high-24h');
+      const $low = document.getElementById('low-24h');
+      const $volume = document.getElementById('volume');
+      const $news = document.getElementById('news-list');
+      const $coinSelector = document.getElementById('coin-selector');
+      const canvas = document.getElementById('sparkline');
+      const ctx = canvas.getContext('2d');
+      
+      // Создаём кнопки выбора монет
+      COINS.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'icon-btn';
+        btn.textContent = c;
+        btn.onclick = () => switchCoin(c);
+        $coinSelector.appendChild(btn);
+      });
+      
+      // --- Утилиты ---
+      function formatPrice(v) {
+        return Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+      
+      // Применяем локализацию сразу
+      function applyLang() {
+        const t = LANG[currentLang];
+        document.querySelector('#theme-toggle span').nextSibling.textContent = ' ' + t.theme;
+        document.querySelector('#donate-open span').nextSibling.textContent = ' ' + t.donate;
+        document.querySelector('body > div > div:nth-child(2)').textContent = t.news;
+        updateInfoTexts();
+      }
+
+      // --- Рисование спарклайна ---
+      function drawSparkline(prices, isUp) {
+        if (!prices || prices.length < 2) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          return;
+        }
+        const w = canvas.width = canvas.clientWidth * window.devicePixelRatio;
+        const h = canvas.height = canvas.clientHeight * window.devicePixelRatio;
+        ctx.clearRect(0, 0, w, h);
+        
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        const range = max - min || 1;
+        
+        const points = prices.map((p, i) => ({
+          x: (i / (prices.length - 1)) * w,
+          y: h - ((p - min) / range) * h
+        }));
+        
+        ctx.beginPath();
+        ctx.strokeStyle = isUp ? '#10b981' : '#ef4444';
+        ctx.lineWidth = 2.5 * window.devicePixelRatio;
+        ctx.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) {
+          ctx.lineTo(points[i].x, points[i].y);
+        }
+        ctx.stroke();
+        
+        // Градиент под линией
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, h);
+        for (let i = 0; i < points.length; i++) {
+          ctx.lineTo(points[i].x, points[i].y);
+        }
+        ctx.lineTo(points[points.length-1].x, h);
+        ctx.closePath();
+        const gradient = ctx.createLinearGradient(0, 0, 0, h);
+        gradient.addColorStop(0, isUp ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = gradient;
+        ctx.fill();
+      }
+
+      // --- Загрузка исторических цен для спарклайна (последние 24 часа, часовые свечи) ---
+      async function loadSparklineData(symbol = 'BTCUSDT') {
+        try {
+          const resp = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=24`);
+          const data = await resp.json();
+          const closePrices = data.map(d => parseFloat(d[4])); // close price
+          const first = closePrices[0];
+          const last = closePrices[closePrices.length-1];
+          const isUp = last >= first;
+          drawSparkline(closePrices, isUp);
+        } catch (e) {
+          console.warn('Sparkline error:', e);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+
+      // --- Обновление цены и статистики ---
+      async function updateStats(symbol = 'BTCUSDT') {
+        try {
+          const resp = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+          const d = await resp.json();
+          $price.textContent = '$' + formatPrice(d.lastPrice);
+          const pct = parseFloat(d.priceChangePercent);
+          $change.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(2) + '%';
+          $change.className = 'change-badge ' + (pct >= 0 ? 'up' : 'down');
+          updateInfoTexts(d);
+        } catch(e) { console.warn(e); }
+      }
+
+      function updateInfoTexts(data) {
+        const t = LANG[currentLang];
+        if (data) {
+          $high.textContent = `${t.high}: $${formatPrice(data.highPrice)}`;
+          $low.textContent = `${t.low}: $${formatPrice(data.lowPrice)}`;
+          $volume.textContent = `${t.vol}: ${parseInt(data.volume).toLocaleString()}`;
+        } else {
+          // обновляем заголовки строк без данных
+          const highParts = $high.textContent.split(': ');
+          const lowParts = $low.textContent.split(': ');
+          const volParts = $volume.textContent.split(': ');
+          if (highParts.length > 1) $high.textContent = t.high + ': ' + highParts[1];
+          if (lowParts.length > 1) $low.textContent = t.low + ': ' + lowParts[1];
+          if (volParts.length > 1) $volume.textContent = t.vol + ': ' + volParts[1];
+        }
+      }
+      
+      function switchCoin(coin) {
+        if (coin === currentCoin) return;
+        currentCoin = coin;
+        $symbol.textContent = coin + '/USDT';
+        updateStats(coin + 'USDT');
+        loadSparklineData(coin + 'USDT');
+      }
+      
+      // --- Новости ---
+      async function loadNews() {
+        try {
+          const resp = await fetch('https://api.rss2json.com/v1/api.json?rss_url=https://cointelegraph.com/feed');
+          const data = await resp.json();
+          $news.innerHTML = data.items.slice(0, 5).map(i => `
+            <a class="news-item" href="${i.link}" target="_blank" rel="noopener">
+              <div class="news-title">${i.title}</div>
+              <div class="news-meta">${new Date(i.pubDate).toLocaleDateString()}</div>
+            </a>`).join('');
+        } catch(e) { $news.textContent = LANG[currentLang].loading; }
+      }
+      
+      // --- Модалки и тема ---
+      document.getElementById('theme-toggle').onclick = () => {
+        document.body.classList.toggle('light');
+        localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : 'dark');
+        loadSparklineData(currentCoin + 'USDT');
+      };
+      document.getElementById('donate-open').onclick = () => document.getElementById('donate-modal').classList.add('active');
+      document.getElementById('donate-close').onclick = () => document.getElementById('donate-modal').classList.remove('active');
+      document.getElementById('donate-modal').onclick = (e) => { if (e.target === e.currentTarget) document.getElementById('donate-modal').classList.remove('active'); };
+      
+      // --- Инициализация ---
+      if (localStorage.getItem('theme') === 'light') document.body.classList.add('light');
+      applyLang(); // применяем язык сразу
+      updateStats('BTCUSDT');
+      loadSparklineData('BTCUSDT');
+      loadNews();
+      setInterval(loadNews, 3600000);
+    })();
+  </script>
+</body>
+</html>
